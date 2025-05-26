@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import Places from './components/Places.jsx';
 import { AVAILABLE_PLACES } from './data.js';
@@ -12,7 +12,7 @@ const storedIDs = JSON.parse(localStorage.getItem('selectedPlaces')) || [];
 const storedPlaces = storedIDs.map(id => AVAILABLE_PLACES.find(place => place.id === id))
 
 function App() {
-  const modal = useRef();
+  const [modalIsOpen, setModalIsOpen] = useState(false);
   const selectedPlace = useRef();
   
   const [availablePlaces, setAvailablePlaces] = useState([])
@@ -40,12 +40,12 @@ function App() {
     }) */
 
   function handleStartRemovePlace(id) {
-    modal.current.open();
+    setModalIsOpen(true)
     selectedPlace.current = id;
   }
 
   function handleStopRemovePlace() {
-    modal.current.close();
+    setModalIsOpen(false)
   }
 
   function handleSelectPlace(id) {
@@ -62,54 +62,56 @@ function App() {
       localStorage.setItem('selectedPlaces', JSON.stringify([id, ...storedIDs]))
   }
 
-  function handleRemovePlace() {
-    setPickedPlaces((prevPickedPlaces) =>
-      prevPickedPlaces.filter((place) => place.id !== selectedPlace.current)
-    );
-    modal.current.close();
+  //like this, function is not re-created
+  const handleRemovePlace = useCallback(function handleRemovePlace() {
+		setPickedPlaces((prevPickedPlaces) =>
+			prevPickedPlaces.filter((place) => place.id !== selectedPlace.current)
+		);
+		setModalIsOpen(false)
 
-    const storedIDs = JSON.parse(localStorage.getItem("selectedPlaces")) || [];
+		const storedIDs = JSON.parse(localStorage.getItem("selectedPlaces")) || [];
 		if (storedIDs.indexOf(id) === -1)
 			//  avoid repeating items
 			localStorage.setItem(
 				"selectedPlaces",
-				JSON.stringify(storedIDs.filter(id => id !== selectedPlace.current))
+				JSON.stringify(storedIDs.filter((id) => id !== selectedPlace.current))
 			);
-  }
+	}, []); // dependencies: any function or value used inside
+  
 
   return (
-    <>
-      <Modal ref={modal}>
-        <DeleteConfirmation
-          onCancel={handleStopRemovePlace}
-          onConfirm={handleRemovePlace}
-        />
-      </Modal>
+		<>
+			<Modal open={modalIsOpen} onClose={handleStopRemovePlace}>
+				<DeleteConfirmation
+					onCancel={handleStopRemovePlace}
+					onConfirm={handleRemovePlace}
+				/>
+			</Modal>
 
-      <header>
-        <img src={logoImg} alt="Stylized globe" />
-        <h1>PlacePicker</h1>
-        <p>
-          Create your personal collection of places you would like to visit or
-          you have visited.
-        </p>
-      </header>
-      <main>
-        <Places
-          title="I'd like to visit ..."
-          fallbackText={'Select the places you would like to visit below.'}
-          places={pickedPlaces}
-          onSelectPlace={handleStartRemovePlace}
-        />
-        <Places
-          title="Available Places"
-          places={AVAILABLE_PLACES}
-          onSelectPlace={handleSelectPlace}
-          fallbackText="Sorting places..."
-        />
-      </main>
-    </>
-  );
+			<header>
+				<img src={logoImg} alt="Stylized globe" />
+				<h1>PlacePicker</h1>
+				<p>
+					Create your personal collection of places you would like to visit or
+					you have visited.
+				</p>
+			</header>
+			<main>
+				<Places
+					title="I'd like to visit ..."
+					fallbackText={"Select the places you would like to visit below."}
+					places={pickedPlaces}
+					onSelectPlace={handleStartRemovePlace}
+				/>
+				<Places
+					title="Available Places"
+					places={AVAILABLE_PLACES}
+					onSelectPlace={handleSelectPlace}
+					fallbackText="Sorting places..."
+				/>
+			</main>
+		</>
+	);
 }
 
 export default App;
